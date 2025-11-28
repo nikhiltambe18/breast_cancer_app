@@ -1,51 +1,47 @@
 import streamlit as st
+import tensorflow as tf
+from PIL import Image
 import numpy as np
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import load_img, img_to_array
 
-# -------------------------
-# 1. Load trained model
-# -------------------------
-MODEL_PATH = "model.h5"      # <--- keep model file in same folder as app.py
-model = load_model(MODEL_PATH)
+st.title("Breast Cancer Classification")
 
-# -------------------------
-# 2. Preprocessing function
-# -------------------------
-def preprocess_image(img):
-    img = img.resize((224, 224))     # <-- change to your model input size
-    img = img_to_array(img)
-    img = img / 255.0
+model = tf.keras.models.load_model("breast_cancer_cnn.h5")
+
+# Read model input shape
+input_shape = model.input_shape
+HEIGHT = input_shape[1]
+WIDTH = input_shape[2]
+CHANNELS = input_shape[3]
+
+st.write(f"Model expects input shape: {HEIGHT} x {WIDTH} x {CHANNELS}")
+
+uploaded_file = st.file_uploader("Upload an image", type=["jpg","jpeg","png"])
+
+if uploaded_file:
+    img = Image.open(uploaded_file)
+
+    # Convert to grayscale if model expects 1-channel
+    if CHANNELS == 1:
+        img = img.convert("L")
+
+    # Resize to required model size
+    img = img.resize((WIDTH, HEIGHT))
+    st.image(img)
+
+    # Convert to numpy array
+    img = np.array(img) / 255.0
+
+    # Expand dims for grayscale
+    if CHANNELS == 1:
+        img = np.expand_dims(img, axis=-1)
+
+    # Add batch dimension
     img = np.expand_dims(img, axis=0)
-    return img
 
-# -------------------------
-# 3. Streamlit UI
-# -------------------------
-st.title("Breast Cancer Classification (CNN)")
-st.write("Upload a histopathology image to classify as **Benign** or **Malignant**.")
+    # Predict
+    pred = model.predict(img)[0][0]
 
-uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
-
-if uploaded_file is not None:
-    img = load_img(uploaded_file)
-    st.image(img, caption="Uploaded Image", use_column_width=True)
-
-    if st.button("Classify"):
-        # 4. Preprocess
-        processed = preprocess_image(img)
-
-        # 5. Predict
-        prediction = model.predict(processed)[0][0]  # assuming binary output
-
-        if prediction > 0.5:
-            result = "Malignant"
-            color = "red"
-        else:
-            result = "Benign"
-            color = "green"
-
-        st.markdown(
-            f"<h2 style='color:{color}; text-align:center;'>Prediction: {result}</h2>",
-            unsafe_allow_html=True
-        )
+    if pred > 0.5:
+        st.write("🔴 *Malignant*")
+    else:
+        st.write("🟢 *Benign*")
