@@ -3,15 +3,8 @@ import tensorflow as tf
 from PIL import Image
 import numpy as np
 
-# Page config
-st.set_page_config(
-    page_title="Breast Cancer Classifier",
-    page_icon="🩺",
-    layout="centered",
-    initial_sidebar_state="expanded"
-)
+st.title("Breast Cancer Classification")
 
-# Load model first
 model = tf.keras.models.load_model("breast_cancer_cnn.h5")
 
 # Read model input shape
@@ -20,23 +13,9 @@ HEIGHT = input_shape[1]
 WIDTH = input_shape[2]
 CHANNELS = input_shape[3]
 
-# Title
-st.markdown("<h1 style='text-align: center; color: grey;'>Breast Cancer Classification</h1>", unsafe_allow_html=True)
-st.markdown("---")
+st.write(f"Model expects input shape: {HEIGHT} x {WIDTH} x {CHANNELS}")
 
-# Sidebar instructions
-st.sidebar.header("Instructions")
-st.sidebar.write("""
-1. Upload a breast tissue image (jpg, jpeg, png).  
-2. The model will predict whether it's Malignant 🔴 or Benign 🟢.  
-3. Model input size: {} x {} x {}  
-""".format(HEIGHT, WIDTH, CHANNELS))
-
-# Display expected input shape
-st.write(f"Model expects input shape: **{HEIGHT} x {WIDTH} x {CHANNELS}**")
-
-# Upload image
-uploaded_file = st.file_uploader("📤 Upload an image", type=["jpg","jpeg","png"])
+uploaded_file = st.file_uploader("Upload an image", type=["jpg","jpeg","png"])
 
 if uploaded_file:
     img = Image.open(uploaded_file)
@@ -45,14 +24,14 @@ if uploaded_file:
     if CHANNELS == 1:
         img = img.convert("L")
 
-    # Resize to model input
+    # Resize to required model size
     img = img.resize((WIDTH, HEIGHT))
-
-    # Show uploaded image
-    st.image(img, caption="Uploaded Image", use_column_width=True)
+    st.image(img)
 
     # Convert to numpy array
     img = np.array(img) / 255.0
+
+    # Expand dims for grayscale
     if CHANNELS == 1:
         img = np.expand_dims(img, axis=-1)
 
@@ -62,9 +41,7 @@ if uploaded_file:
     # Predict
     pred = model.predict(img)[0][0]
 
-    # Show results
-    st.markdown("---")
     if pred > 0.5:
-        st.markdown("<h2 style='color: red; text-align: center;'>🔴 Malignant</h2>", unsafe_allow_html=True)
+        st.write("🔴 *Malignant*")
     else:
-        st.markdown("<h2 style='color: green; text-align: center;'>🟢 Benign</h2>", unsafe_allow_html=True)
+        st.write("🟢 *Benign*")
